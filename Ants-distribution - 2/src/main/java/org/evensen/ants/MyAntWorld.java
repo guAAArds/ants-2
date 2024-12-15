@@ -10,8 +10,8 @@ import java.util.Random;
 
 public class MyAntWorld implements AntWorld {
 
-    private int width;
-    private int height;
+    private final int width;
+    private final int height;
 
     private float[][] foragingPheromones;
     private float[][] foodPheromones;
@@ -20,46 +20,36 @@ public class MyAntWorld implements AntWorld {
 
     private List<FoodSource> foodSources;
 
+/*
+
+ */
 
     public MyAntWorld(int width, int height, int food){
         this.width = width;
         this.height = height;
 
+        this.foodMatrix = new boolean[width][height];
+
+        this.foragingPheromones = new float[width][height];
+        this.foodPheromones = new float[width][height];
+
         this.foodSources = new ArrayList<>();
         for(int i = 0; i < food; i++){
             this.foodSources.add(new FoodSource(width, height));
-            //addFoodSource(this.foodSources.get(i));
+            updateFoodSource(foodSources.get(i), true);
         }
-
-        this.foodMatrix = new boolean[width][height];
 
         this.foragingPheromones = new float[width][height];
         this.foodPheromones = new float[width][height];
     }
 
-    private void addFoodSource(FoodSource foodSource) {
+    private void updateFoodSource(FoodSource foodSource, boolean set) {
         Position center = foodSource.p;
         int radius = foodSource.radius;
         for (int x = (int)center.getX() - radius; x < center.getX() + radius; x++) {
             for (int y = (int)center.getY() - radius; y < center.getY() + radius; y++) {
                 if (isInsideWorld(foodSource.p, foodSource) && center.isWithinRadius(new Position(x, y), radius)) {
-                    if(x*y >= 0){
-                        this.foodMatrix[x][y] = true;
-                    }
-                }
-            }
-        }
-    }
-
-    private void removeFoodSource(FoodSource foodSource) {
-        Position center = foodSource.p;
-        int radius = foodSource.radius;
-        for (int x = (int)center.getX() - radius; x < center.getX() + radius; x++) {
-            for (int y = (int)center.getY() - radius; y < center.getY() + radius; y++) {
-                if (isInsideWorld(foodSource.p, foodSource) && center.isWithinRadius(new Position(x, y), radius)) {
-                    if(0 <= x * y){
-                        this.foodMatrix[x][y] = false;
-                    }
+                    this.foodMatrix[x][y] = set;
                 }
             }
         }
@@ -88,6 +78,7 @@ public class MyAntWorld implements AntWorld {
         return x < 0 || y < 0 || y >= this.height || x >= this.width;
     }
 
+    //Kolla amount
     @Override
     public void dropForagingPheromone(final Position p, final float amount) {
         if(this.foragingPheromones[(int)p.getX()][(int)p.getY()] >= 10){
@@ -115,17 +106,18 @@ public class MyAntWorld implements AntWorld {
 
     }
 
+    //+10?
     @Override
     public void pickUpFood(final Position p) {
         for(FoodSource fs : this.foodSources){
-            if(p.isWithinRadius(fs.p, fs.radius)){
+            if(p.isWithinRadius(fs.p, fs.radius + 10)){
                 if(fs.containsFood()){
                     fs.takeFood();
                 }
                 else{
-                    removeFoodSource(fs);
+                    updateFoodSource(fs, false);
                     fs.resetFoodSource();
-                    addFoodSource(fs);
+                    updateFoodSource(fs, true);
                 }
 
             }
@@ -160,17 +152,17 @@ public class MyAntWorld implements AntWorld {
 
     @Override
     public boolean containsFood(final Position p) {
-        //return this.foodMatrix[(int)p.getX()][(int)p.getY()];
+        return this.foodMatrix[(int)p.getX()][(int)p.getY()];
 
+        /*
         for(FoodSource fs : this.foodSources){
             if(p.isWithinRadius(fs.p, fs.radius)){
                 return true;
             }
         }
-        //Position food = new Position(this.width/2, this.height/2);
-        //return p.isWithinRadius(food, 20);
         return false;
 
+         */
 
     }
 
