@@ -81,22 +81,23 @@ public class MyAntWorld implements AntWorld {
     //Kolla amount
     @Override
     public void dropForagingPheromone(final Position p, final float amount) {
-        if(this.foragingPheromones[(int)p.getX()][(int)p.getY()] >= 10){
+
+        if(this.foragingPheromones[(int)p.getX()][(int)p.getY()] >= 9){
             this.foragingPheromones[(int)p.getX()][(int)p.getY()] = 10;
         }
         else {
-            this.foragingPheromones[(int)p.getX()][(int)p.getY()] += 1.0;
+            this.foragingPheromones[(int)p.getX()][(int)p.getY()] += 1.0f;
         }
 
     }
 
     @Override
     public void dropFoodPheromone(final Position p, final float amount) {
-        if(this.foodPheromones[(int)p.getX()][(int)p.getY()] >= 10){
+        if(this.foodPheromones[(int)p.getX()][(int)p.getY()] >= 9){
             this.foodPheromones[(int)p.getX()][(int)p.getY()] = 10;
         }
         else {
-            this.foodPheromones[(int)p.getX()][(int)p.getY()] += 1.0;
+            this.foodPheromones[(int)p.getX()][(int)p.getY()] += 1.0f;
         }
 
     }
@@ -122,17 +123,6 @@ public class MyAntWorld implements AntWorld {
 
             }
         }
-
-        /*
-            this.foodLeft = this.foodCount;
-            this.p = new Position(rand.nextFloat(0, this.width), rand.nextFloat(0, this.height));
-
-        for(FoodSource fs : this.foodSources){
-            if(p.isWithinRadius(fs.p, fs.radius)){
-                fs.takeFood();
-            }
-        }
-         */
     }
 
     @Override
@@ -153,17 +143,6 @@ public class MyAntWorld implements AntWorld {
     @Override
     public boolean containsFood(final Position p) {
         return this.foodMatrix[(int)p.getX()][(int)p.getY()];
-
-        /*
-        for(FoodSource fs : this.foodSources){
-            if(p.isWithinRadius(fs.p, fs.radius)){
-                return true;
-            }
-        }
-        return false;
-
-         */
-
     }
 
     @Override
@@ -174,14 +153,21 @@ public class MyAntWorld implements AntWorld {
     @Override
     public boolean isHome(final Position p) {
         Position home = new Position(this.width, this.height/2);
-
-
         return p.isWithinRadius(home, 20);
     }
 
     @Override
-    public void dispersePheromones() {
-        float evaporationRate = 0.80f; // Kan justeras
+    public void dispersePheromones(){
+
+
+    }
+
+
+    //@Override
+    public void selfDispersePheromones() {
+        //evaporation of pheromones.
+        /*
+        float evaporationRate = 0.60f;
         for (int x = 0; x < this.width; x++) {
             for (int y = 0; y < this.height; y++) {
                 this.foragingPheromones[x][y] *= evaporationRate;
@@ -189,11 +175,79 @@ public class MyAntWorld implements AntWorld {
             }
         }
 
+         */
+
+        //Lets foodsorces drop food pheromones.
         for(FoodSource fs : this.foodSources){
             dropFoodPheromone(fs.p, 10);
         }
+        //------------------ Disperse 2 ------------------
 
+        //Temporära matriser som vi sedan kopierar till de riktiga
+        float[][] newForagingPheromones = new float[width][height];
+        float[][] newFoodPheromones = new float[width][height];
+
+        //Konstanterna
+        float k = 0.5f;
+        float f = 0.80f;
+
+        // En array med matriser (en array med foraging matrisen samt food matrisen)
+        float[][][] pheromoneTypes = {foragingPheromones, foodPheromones};
+        float[][][] newPheromoneTypes = {newForagingPheromones, newFoodPheromones};
+
+        // loopar igenom alla fermontyper
+        for (int t = 0; t < pheromoneTypes.length; t++) {
+            float[][] pheromones = pheromoneTypes[t];
+            float[][] newPheromones = newPheromoneTypes[t];
+
+            //Loopar igenom alla punkter
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+
+                    // Om positionen är ett hinder, hoppa över den
+                    if (isObstacle(new Position(x, y))) {
+                        newPheromones[x][y] = 0;
+                        continue;
+                    }
+
+                    //Beräknar npl (neighbor pheromone level)
+                    double npl = 0;
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dy = -1; dy <= 1; dy++) {
+                            if (dx == 0 && dy == 0) continue; //Punkten är ej en granne till sig själv
+
+                            int nx = x + dx;
+                            int ny = y + dy;
+
+                            //Kontroll av kanter (ska speglas ifall utanför)
+                            if (nx < 0) nx = 0;
+                            if (ny < 0) ny = 0;
+                            if (nx >= width) nx = width - 1;
+                            if (ny >= height) ny = height - 1;
+
+                            npl += pheromones[nx][ny];
+                        }
+                    }
+
+                    //beräknar ny fermon nivå
+                    double currentPheromone = pheromones[x][y];
+                    npl = ((1 - k) * npl) / 8 + k * currentPheromone;
+
+                    //applicera konstanten f
+                    newPheromones[x][y] = (float) (npl * f);
+                }
+            }
+        }
+
+        // Kopiera tillbaka värden från tmpP till de faktiska feromonmatriserna
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                foragingPheromones[x][y] = newForagingPheromones[x][y];
+                foodPheromones[x][y] = newFoodPheromones[x][y];
+            }
+        }
     }
+
 
     @Override
     public void setObstacle(final Position p, final boolean add) {
